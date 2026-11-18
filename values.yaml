@@ -1,0 +1,13 @@
+replicaCount: 2
+
+app:
+  name: hello-kubernetes
+  instance: demo
+image:
+  repository: paulbouwer/hello-kubernetes
+  tag: "1.11.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
