@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ .Values.app.name}}
     app.kubernetes.io/instance: {{ .Values.app.instance}}
-    app.kubernetes.io/version: {{ .Values.app.tag}}
+    app.kubernetes.io/version: {{ .Values.image.tag}}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
