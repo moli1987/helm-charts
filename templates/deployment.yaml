@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name}}-{{ .Values.app.instance}}
+  labels:
+    app.kubernetes.io/name: {{ .Values.app.name}}
+    app.kubernetes.io/instance: {{ .Values.app.instance}}
+    app.kubernetes.io/version: {{ .Values.app.tag}}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.app.name}}
+      app.kubernetes.io/instance: {{ .Values.app.instance}}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.app.name}}
+        app.kubernetes.io/instance: {{ .Values.app.instance}}
+    spec:
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: {{ .Values.app.name}}
+          image: {{ .Values.image.repository}}:{{ .Values.image.tag}}
+          imagePullPolicy: {{ .Values.image.pullPolicy}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          # Keep serving for a few seconds after the pod is told to stop, while
+          # the Service and the Ingress or Gateway stop sending it requests.
+          # The app exits as soon as it gets SIGTERM, so without this a rolling
+          # update drops a request now and then (e2e E12).
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
+          livenessProbe:
+            httpGet:
+              path: "/"
+              port: http
+          readinessProbe:
+            httpGet:
+              path: "/"
+              port: http
+          env:
+          - name: KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: KUBERNETES_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: KUBERNETES_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: CONTAINER_IMAGE
+            value: {{ .Values.image.repository}}:{{ .Values.image.tag}}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
